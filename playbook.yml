@@ -1,110 +1,107 @@
 ---
 - hosts: webservers
   become: yes
+  vars:
+    docker_packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+
   tasks:
-    - name: Update all packages
-      dnf:
-        name: '*'
-        state: latest
-        update_only: yes
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
 
-    # Install Docker and dependencies
-    - name: Add Docker repository
-      command: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-      args:
-        creates: /etc/yum.repos.d/docker-ce.repo
-
-    - name: Install Docker and dependencies
-      dnf:
+    - name: Install prerequisite packages
+      apt:
         name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-          - python3-pip
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
         state: present
 
-    # Modified Python Docker SDK installation
-    - name: Remove existing docker package if installed via pip
-      pip:
-        name: docker
-        state: absent
-      ignore_errors: yes
-
-    - name: Install Python Docker SDK using pip
-      pip:
-        name: docker
+    - name: Add Docker’s official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
         state: present
-        extra_args: --ignore-installed
 
-    - name: Start and enable Docker service
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+        state: present
+        filename: docker
+
+    - name: Update apt and install Docker packages
+      apt:
+        name: "{{ docker_packages }}"
+        state: present
+        update_cache: yes
+
+    - name: Enable and start Docker
       service:
         name: docker
         state: started
         enabled: yes
 
-    - name: Add ec2-user to docker group
+    - name: Add ec2-user to Docker group (use 'runner' on GitHub Actions)
       user:
-        name: ec2-user
+        name: runner
         groups: docker
         append: yes
 
-    # Docker tasks
+    - name: Install Python Docker SDK
+      pip:
+        name: docker
+
     - name: Pull React app Docker image
       community.docker.docker_image:
-        name: "wsztg008/react-app"
+        name: "{{ lookup('env', 'DOCKERHUB_USERNAME') }}/react-app"
         source: pull
         tag: latest
 
     - name: Run React app container
       community.docker.docker_container:
         name: react-app
-        image: "wsztg008/react-app:latest"
+        image: "{{ lookup('env', 'DOCKERHUB_USERNAME') }}/react-app:latest"
         state: started
         restart_policy: always
         ports:
           - "81:80"
 
-    # NGINX tasks
     - name: Install NGINX
-      dnf:
+      apt:
         name: nginx
         state: present
 
-    - name: Create custom index.html
+    - name: Overwrite NGINX index.html
       copy:
-        content: "<html><body><h1>Hello World! from git hub</h1></body></html>"
-        dest: /usr/share/nginx/html/index.html
+        content: "<html><body><h1>Hello from GitHub Actions + Ansible</h1></body></html>"
+        dest: /var/www/html/index.html
 
-    - name: Start NGINX
+    - name: Start and enable NGINX
       service:
         name: nginx
         state: started
         enabled: yes
 
-    # Firewall configuration
-    - name: Install firewalld
-      dnf:
-        name: firewalld
-        state: present
+    - name: Allow UFW HTTP & port 81 traffic
+      block:
+        - name: Allow HTTP
+          ufw:
+            rule: allow
+            port: "80"
+            proto: tcp
 
-    - name: Start and enable firewalld
-      service:
-        name: firewalld
-        state: started
-        enabled: yes
+        - name: Allow custom port 81
+          ufw:
+            rule: allow
+            port: "81"
+            proto: tcp
+      when: ansible_facts['distribution'] == "Ubuntu"
 
-    - name: Allow HTTP through firewall
-      firewalld:
-        service: http
-        permanent: yes
+    - name: Enable UFW and reload to apply rules
+      ufw:
         state: enabled
-        immediate: yes
-      ignore_errors: yes
-
-    - name: Allow port 81 through firewall
-      firewalld:
-        port: 81/tcp
-        permanent: yes
-        state: enabled
-        immediate: yes
-      ignore_errors: yes
+        policy: allow
