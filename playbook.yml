@@ -78,7 +78,7 @@
 
     - name: Overwrite NGINX index.html
       copy:
-        content: "<html><body><h1>Hello from GitHub Actions + Ansible</h1></body></html>"
+        content: "<html><body><h1>Hello from GitHub Actions + Ansible!!</h1></body></html>"
         dest: /var/www/html/index.html
 
     - name: Start and enable NGINX service
