@@ -84,7 +84,7 @@ jobs:
         run: terraform apply -auto-approve -input=false
 
       - name: Run Ansible playbook provisioning
-        run: ansible-playbook -i inventory.ini --private-key deployer-key.pem playbook.yml
+        run: ansible-playbook -i inventory.ini --private-key deployer-key.pem ansible/playbook.yml
 
       - name: Final cleanup on failure
         if: always()

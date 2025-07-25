@@ -13,15 +13,6 @@ resource "aws_s3_bucket" "terraform_state" {
     }
   }
 
-  lifecycle_rule {
-    id      = "expire-old-versions"
-    enabled = true
-
-    noncurrent_version_expiration {
-      days = 90
-    }
-  }
-
   tags = {
     Name        = "Terraform State Bucket"
     Environment = "ci-cd"
