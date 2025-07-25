@@ -11,7 +11,7 @@ provider "aws" {
   region = var.region
 }
 
-# Data source to check t2.micro availability.
+# Data source to check t2.micro availability
 data "aws_ec2_instance_type_offerings" "t2_micro" {
   filter {
     name   = "instance-type"
