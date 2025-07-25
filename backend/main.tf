@@ -3,11 +3,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "your-terraform-state-bucket-mike-gao-andy-project"
-
-  versioning {
-    enabled = true
-  }
+  bucket = "your-terraform-state-bucket-mike-gao-andy-projects"
 
   server_side_encryption_configuration {
     rule {

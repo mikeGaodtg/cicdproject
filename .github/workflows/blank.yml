@@ -93,7 +93,7 @@ jobs:
             echo "Ensuring all resources are cleaned up in ./backend..."
 
             terraform destroy -auto-approve || true
-            cd ./backend
-            terraform destroy -auto-approve || true
-            cd ..
+
+            terraform -chdir=.\backend apply || true
+
           fi
