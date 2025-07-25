@@ -118,21 +118,6 @@ variable "ami" {
   default = "ami-0150ccaf51ab55a51"
 }
 
-resource "aws_s3_bucket" "terraform_state" {
-  bucket = "your-terraform-state-bucket-mike-gao-andy-project"
-}
-
-resource "aws_dynamodb_table" "terraform_locks" {
-  name         = "terraform-state-locks"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-}
-
 # main.tf
 terraform {
   backend "s3" {
