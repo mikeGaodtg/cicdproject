@@ -1,10 +1,44 @@
-# backend/main.tf
 provider "aws" {
   region = "us-east-1"
 }
 
 resource "aws_s3_bucket" "terraform_state" {
   bucket = "your-terraform-state-bucket-mike-gao-andy-project"
+
+  versioning {
+    enabled = true
+  }
+
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+
+  lifecycle_rule {
+    id      = "expire-old-versions"
+    enabled = true
+
+    noncurrent_version_expiration {
+      days = 90
+    }
+  }
+
+  tags = {
+    Name        = "Terraform State Bucket"
+    Environment = "ci-cd"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "state" {
+  bucket = aws_s3_bucket.terraform_state.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_dynamodb_table" "terraform_locks" {
@@ -15,6 +49,11 @@ resource "aws_dynamodb_table" "terraform_locks" {
   attribute {
     name = "LockID"
     type = "S"
+  }
+
+  tags = {
+    Name        = "Terraform State Lock Table"
+    Environment = "ci-cd"
   }
 }
 
