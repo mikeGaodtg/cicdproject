@@ -44,7 +44,7 @@
         - "docker-compose-plugin-{{ compose_version }}.{{ architecture }}.rpm"
         - "docker-scan-plugin-{{ scan_version }}.{{ architecture }}.rpm"
 
-            # Add this task after Docker installation and before pulling image.
+            # Add this task after Docker installation and before pulling image.git
     - name: Start and enable Docker service
       systemd:
         name: docker

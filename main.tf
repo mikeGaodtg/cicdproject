@@ -1,41 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.region
-}
-
-# Data source to check t2.micro availability
-data "aws_ec2_instance_type_offerings" "t2_micro" {
-  filter {
-    name   = "instance-type"
-    values = ["t2.micro"]
-  }
-  location_type = "availability-zone"
-}
-
-# Data source to check t3.micro availability
-data "aws_ec2_instance_type_offerings" "t3_micro" {
-  filter {
-    name   = "instance-type"
-    values = ["t3.micro"]
-  }
-  location_type = "availability-zone"
-}
-
-# Local variable to determine instance type
-locals {
-  t2_micro_available = length(data.aws_ec2_instance_type_offerings.t2_micro.instance_types) > 0
-  t3_micro_available = length(data.aws_ec2_instance_type_offerings.t3_micro.instance_types) > 0
-  instance_type     = local.t2_micro_available ? "t2.micro" : (local.t3_micro_available ? "t3.micro" : "none")
-}
-
 resource "aws_instance" "amazonlinux" {
   ami           = var.ami
   instance_type = local.instance_type
@@ -95,37 +57,6 @@ resource "aws_security_group" "allow_ssh" {
 
   tags = {
     Name = "allow_ssh"
-  }
-}
-
-output "instance_public_ip" {
-  description = "Public IP of the instance."
-  value       = aws_instance.amazonlinux.public_ip
-}
-
-output "selected_instance_type" {
-  description = "The instance type that was selected."
-  value       = local.instance_type
-}
-
-variable "region" {
-  type    = string
-  default = "us-east-1"
-}
-
-variable "ami" {
-  type    = string
-  default = "ami-0150ccaf51ab55a51"
-}
-
-# main.tf
-terraform {
-  backend "s3" {
-    bucket         = "your-terraform-state-bucket-mike-gao-andy-projects"
-    key            = "terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "terraform-state-locks"
-    encrypt        = true
   }
 }
 
@@ -192,9 +123,4 @@ resource "null_resource" "ansible_provisioner" {
       ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini --private-key deployer-key.pem playbook.yml -vv
     EOF
   }
-}
-
-
-output "inventory_content" {
-  value = local_file.ansible_inventory.content
 }
