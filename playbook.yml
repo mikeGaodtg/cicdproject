@@ -1,0 +1,117 @@
+
+---
+- name: Install Docker components from RPM on Amazon Linux 2023.
+  hosts: webservers
+  become: yes
+  vars:
+    architecture: "el9.x86_64"
+    buildx_version: "0.10.2-1"
+    compose_version: "2.6.0-3"
+    containerd_version: "1.7.23-3.1"
+    docker_rpm_base_url: "https://download.docker.com/linux/centos/9/x86_64/stable/Packages"
+    docker_version: "27.3.1-1"
+    scan_version: "0.23.0-3"
+  tasks:
+    - name: Remove docker
+      ansible.builtin.dnf:
+        name: docker
+        state: absent
+
+    - name: Install required packages
+      package:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - iptables-libs
+        - iptables-nft
+        - libcgroup
+        - libnetfilter_conntrack
+        - libnfnetlink
+        - libnftnl
+        - runc
+        - yum-utils
+
+    - name: Install Docker components from RPMs
+      ansible.builtin.dnf:
+        name: "{{ docker_rpm_base_url }}/{{ item }}"
+        state: present
+        disable_gpg_check: true
+      loop:
+        - "containerd.io-{{ containerd_version }}.{{ architecture }}.rpm"
+        - "docker-ce-cli-{{ docker_version }}.{{ architecture }}.rpm"
+        - "docker-buildx-plugin-{{ buildx_version }}.{{ architecture }}.rpm"
+        - "docker-ce-{{ docker_version }}.{{ architecture }}.rpm"
+        - "docker-compose-plugin-{{ compose_version }}.{{ architecture }}.rpm"
+        - "docker-scan-plugin-{{ scan_version }}.{{ architecture }}.rpm"
+
+            # Add this task after Docker installation and before pulling image
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      become: yes
+      
+    - name: Wait for Docker to be ready
+      wait_for:
+        timeout: 10
+        
+    - name: Add ec2-user to docker group
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
+    # Pull and run React app container
+    - name: Pull React app Docker image
+      docker_image:
+        name: "wsztg008/react-app"
+        source: pull
+        tag: latest
+
+    - name: Run React app container
+      docker_container:
+        name: react-app
+        image: "wsztg008/react-app:latest"
+        state: started
+        restart_policy: always
+        ports:
+          - "81:81"
+
+    # Original nginx tasks (optional if you're using Docker)
+    - name: Install NGINX
+      dnf:
+        name: nginx
+        state: present
+
+    - name: Create custom index.html
+      copy:
+        content: "<html><body><h1>Hello World! from git hub</h1></body></html>"
+        dest: /usr/share/nginx/html/index.html
+
+    - name: Start NGINX
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    # Firewall configuration
+    - name: Allow HTTP through firewall
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+      ignore_errors: yes
+
+    - name: Allow port 81 through firewall
+      firewalld:
+        port: 81/tcp
+        permanent: yes
+        state: enabled
+      ignore_errors: yes
+
+    - name: Reload firewall
+      systemd:
+        name: firewalld
+        state: reloaded
+      ignore_errors: yes

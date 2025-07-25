@@ -1,0 +1,101 @@
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_push:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/react-app:latest
+
+  terraform:
+    needs: build_and_push
+    if: github.event.pull_request.merged == true
+    name: Terraform Deploy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.5.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Backend - Terraform Init
+        working-directory: ./backend
+        run: terraform init
+
+      - name: Backend - Terraform Plan
+        working-directory: ./backend
+        run: terraform plan
+
+      - name: Backend - Terraform Apply
+        working-directory: ./backend
+        run: terraform apply -auto-approve
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Terraform Plan
+        run: terraform plan -input=false
+
+      - name: Terraform Apply
+        if: github.event.pull_request.merged == true
+        run: terraform apply -auto-approve -input=false
+
+      - name: Run Ansible playbook provisioning
+        run: ansible-playbook -i inventory.ini --private-key deployer-key.pem playbook.yml
+
+      - name: Final cleanup on failure
+        if: always()
+        run: |
+          if [ "${{ job.status }}" != "success" ]; then
+            echo "Ensuring all resources are cleaned up..."
+            terraform destroy -auto-approve || true
+            RESOURCES=$(terraform state list || echo "")
+            if [ ! -z "$RESOURCES" ]; then
+              echo "Warning: Resources may still exist"
+              echo "$RESOURCES"
+              exit 1
+            fi
+          fi
