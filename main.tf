@@ -131,7 +131,7 @@ terraform {
 
 # Create key pair
 resource "aws_key_pair" "deployer" {
-  key_name   = "deployer-key2"
+  key_name   = "deployer-key3"
   public_key = tls_private_key.pk.public_key_openssh
 }
 
