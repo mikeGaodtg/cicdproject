@@ -4,11 +4,11 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "your-terraform-state-bucket-mike-gao-andy-projects"
+  bucket = "your-terraform-state-bucket-mike-gao-andy-project"
 }
 
 resource "aws_dynamodb_table" "terraform_locks" {
-  name         = "terraform-state-lockss"
+  name         = "terraform-state-locks"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
 
