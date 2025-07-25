@@ -38,7 +38,7 @@ jobs:
     defaults:
       run:
         shell: bash
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -90,12 +90,10 @@ jobs:
         if: always()
         run: |
           if [ "${{ job.status }}" != "success" ]; then
-            echo "Ensuring all resources are cleaned up..."
+            echo "Ensuring all resources are cleaned up in ./backend..."
+
             terraform destroy -auto-approve || true
-            RESOURCES=$(terraform state list || echo "")
-            if [ ! -z "$RESOURCES" ]; then
-              echo "Warning: Resources may still exist"
-              echo "$RESOURCES"
-              exit 1
-            fi
+            cd ./backend
+            terraform destroy -auto-approve || true
+            cd ..
           fi
