@@ -25,7 +25,7 @@
   tasks:
 
     # -------------------------------------------------------------------------
-    # Remove any existing Docker packages
+    # Remove any existing Docker packages.
     # -------------------------------------------------------------------------
     - name: Remove docker
       ansible.builtin.dnf:
