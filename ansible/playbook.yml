@@ -124,24 +124,14 @@
         enabled: yes
 
     # -------------------------------------------------------------------------
-    # Configure firewall (if firewalld is available)
+    # Security Group Information (Managed by Terraform)
     # -------------------------------------------------------------------------
-    - name: Allow HTTP through firewall
-      firewalld:
-        service: http
-        permanent: yes
-        state: enabled
-      ignore_errors: yes
-
-    - name: Allow port 81 through firewall
-      firewalld:
-        port: 81/tcp
-        permanent: yes
-        state: enabled
-      ignore_errors: yes
-
-    - name: Reload firewall
-      systemd:
-        name: firewalld
-        state: reloaded
-      ignore_errors: yes
+    # Note: Firewall rules are already configured in the AWS security group
+    # by Terraform. Amazon Linux 2023 uses security groups for network access control.
+    # The security group allows:
+    # - Port 22 (SSH) from anywhere
+    # - Port 80 (HTTP) from anywhere  
+    # - Port 81 (React app) from anywhere
+    - name: Display security group information
+      debug:
+        msg: "Security group rules are managed by Terraform. Ports 22, 80, and 81 are already open."
